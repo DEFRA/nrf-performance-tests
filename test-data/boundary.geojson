@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [1.290, 51.200],
+            [1.300, 51.200],
+            [1.300, 51.210],
+            [1.290, 51.210],
+            [1.290, 51.200]
+          ]
+        ]
+      },
+      "properties": {
+        "name": "perf-test red line boundary"
+      }
+    }
+  ]
+}

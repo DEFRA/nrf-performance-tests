@@ -1,6 +1,9 @@
 # nrf-performance-tests
 
-A JMeter based test runner for the CDP Platform.
+A JMeter based performance test runner for the Nature Restoration Fund (NRF)
+service on the CDP Platform. It ships scenarios for the `nrf-frontend` quote
+journey — a smoke test, the boundary **upload** flow, and the **submit quote**
+step — runnable locally via Docker Compose or on the CDP perf environment.
 
 - [Licence](#licence)
   - [About the licence](#about-the-licence)
@@ -35,41 +38,66 @@ This ensures any changes to `entrypoint.sh` or other scripts are picked up prope
 docker compose up --build
 ```
 
-This brings up:
+This brings up the full Nature Restoration Fund stack under test:
 
-* `development`: the container that runs your performance tests
-* `localstack`: simulates AWS S3, SNS, SQS, etc.
-* `redis`: backing service for cache
-* `service`: the application under test
+* `development`: the container that runs the JMeter performance tests
+* `service`: the `nrf-frontend` application under test (port 3000)
+* `nrf-backend`: the backend API the frontend calls (port 3001)
+* `postgres`: PostGIS database for the backend
+* `liquibase`: applies the backend database schema, then exits
+* `cdp-uploader`: file-upload/scan service (mock virus scanner) for the upload flow
+* `redis`: backing cache for the frontend, backend and uploader
+* `localstack`: simulates AWS S3, SNS and SQS
 
-Once all services are healthy, your performance tests will automatically start.
+Once all services are healthy, the performance tests start automatically.
+
+> **Liquibase changelogs (local only):** the `liquibase` service applies the
+> backend schema from the sibling `nrf-backend` checkout
+> (`../nrf-backend/changelog`). If that repo lives elsewhere, set
+> `BACKEND_CHANGELOG_PATH` before running. This is only needed locally — CDP
+> environments run their own migrations.
 
 ---
 
-### Replace `service-name` in Compose File
+### Choosing a scenario
 
-In the `docker-compose.yml`, make sure to replace:
+The suite ships three JMeter scenarios, selected with the `TEST_SCENARIO`
+environment variable on the `development` container:
 
-```yaml
-image: defradigital/service-name:${SERVICE_VERSION:-latest}
+| `TEST_SCENARIO` | File | What it tests |
+|-----------------|------|---------------|
+| `start` (default) | `scenarios/start.jmx` | Smoke test — `GET /` (start page) |
+| `upload` | `scenarios/upload.jmx` | Boundary upload flow (frontend → backend → cdp-uploader) |
+| `submit-quote` | `scenarios/submit-quote.jmx` | Submit a quote — `POST /quote/check-your-answers` |
+
+```bash
+docker compose run --rm -e TEST_SCENARIO=submit-quote development
 ```
 
-with the actual name of your service’s image.
+### Tuning the load profile
 
-This is the service under test, which must expose a `/health` endpoint and listen on port `3000`.
+The load shape is controlled by environment variables (defaults shown), injected
+into the test plans as JMeter properties:
+
+```bash
+THREAD_COUNT=10 RAMPUP_SECONDS=30 LOOP_COUNT=100 DURATION_SECONDS=300
+```
+
+In the CDP perf environment these are set from the Portal.
 
 ---
 
 ### Notes
 
-* S3 bucket is expected to be `s3://test-results`, automatically created inside LocalStack.
-* Logs and reports are written to `./reports` on your host.
-* `entrypoint.sh` should contain the logic to wait for dependencies and kick off the test run.
-* The `depends_on` healthchecks ensure services like `localstack` and `service` are ready before tests start.
-* If you make changes to test scripts or entrypoints, rerun with:
+* LocalStack resources (the `s3://test-results` bucket, the upload buckets/queues and the `nrf-quote-estimate-request` SNS topic) are created automatically by [`compose/localstack/05-setup.sh`](compose/localstack/05-setup.sh).
+* Logs and reports are written to `./reports` on your host. `entrypoint.sh` clears this directory before each run, so reports do not accumulate between runs.
+* `entrypoint.sh` runs JMeter for the selected `TEST_SCENARIO` and publishes the results to S3.
+* `depends_on` healthchecks (and `service_completed_successfully` for `liquibase`) ensure the database, backend, uploader and frontend are ready before the tests start.
+* Boundary/upload test data lives in [`test-data/`](test-data) and is copied into the image by the `Dockerfile`.
+* If you change test scripts, scenarios or `entrypoint.sh`, rebuild the test container:
 
 ```bash
-docker compose up --build
+docker compose build development
 ```
 
 ## Local Testing with LocalStack
