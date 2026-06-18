@@ -3,6 +3,7 @@ services:
     build: .
     volumes:
       - ./reports:/opt/perftest/reports
+      - ./logs:/opt/perftest/logs
     depends_on:
       service:
         condition: service_healthy
@@ -12,14 +13,14 @@ services:
       S3_ENDPOINT: 'http://localstack:4566'
       RESULTS_OUTPUT_S3_PATH: 's3://test-results'
       ENVIRONMENT: local
-      SERVICE_ENDPOINT: localhost
+      SERVICE_ENDPOINT: service
       SERVICE_PORT: 3000
       SERVICE_URL_SCHEME: http
     networks:
       - performance-tests
 
   localstack:
-    image: localstack/localstack:4.3.0
+    image: localstack/localstack:4.12.0
     ports:
       - '4566:4566' # LocalStack Gateway
       - '4510-4559:4510-4559' # external services port range
@@ -51,8 +52,8 @@ services:
       - performance-tests
 
   service:
-    # replace service-name with the name of your service being performace tested
-    image: defradigital/service-name:${SERVICE_VERSION:-latest}
+    # nrf-frontend: the application under test
+    image: defradigital/nrf-frontend:${SERVICE_VERSION:-latest}
     ports:
       - '3000:3000'
     links:
@@ -61,6 +62,10 @@ services:
     depends_on:
       localstack:
         condition: service_healthy
+      nrf-backend:
+        condition: service_healthy
+      cdp-uploader:
+        condition: service_healthy
     env_file:
       - 'compose/aws.env'
     environment:
@@ -68,11 +73,115 @@ services:
       NODE_ENV: development
       REDIS_HOST: redis
       USE_SINGLE_INSTANCE_CACHE: true
+      NRF_BACKEND_API_URL: 'http://nrf-backend:3001'
+      BACKEND_API_KEY: local-dev-key
+      # Browser-facing URL the upload form posts to. The test (browser) container
+      # is on this network, so it can reach the uploader by service name.
+      CDP_UPLOADER_URL: 'http://cdp-uploader:7337'
+      CDP_UPLOADER_BUCKET: boundaries
     healthcheck:
       test: ['CMD', 'curl', 'localhost:3000/health']
       interval: 5s
       start_period: 5s
       retries: 3
+    networks:
+      - performance-tests
+
+  nrf-backend:
+    image: defradigital/nrf-backend:${BACKEND_VERSION:-latest}
+    ports:
+      - '3001:3001'
+    depends_on:
+      localstack:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+      cdp-uploader:
+        condition: service_healthy
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      BACKEND_API_KEY: local-dev-key
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: nrf_backend
+      DB_USER: postgres
+      DB_LOCAL_PASSWORD: password
+      DB_SSL: false
+      # Server-to-server URL the backend calls to initiate uploads.
+      CDP_UPLOADER_URL: 'http://cdp-uploader:7337'
+      CDP_UPLOADER_BUCKET: boundaries
+    healthcheck:
+      test: ['CMD', 'curl', 'localhost:3001/health']
+      interval: 5s
+      start_period: 5s
+      retries: 5
+    networks:
+      - performance-tests
+
+  cdp-uploader:
+    image: defradigital/cdp-uploader:${UPLOADER_VERSION:-latest}
+    ports:
+      - '7337:7337'
+    depends_on:
+      localstack:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      PORT: 7337
+      NODE_ENV: development
+      REDIS_HOST: redis
+      USE_SINGLE_INSTANCE_CACHE: true
+      S3_ENDPOINT: 'http://localstack:4566'
+      SQS_ENDPOINT: 'http://localstack:4566'
+      # Buckets the uploader is allowed to deliver scanned files into.
+      CONSUMER_BUCKETS: boundaries
+      # Use the built-in mock virus scanner so no ClamAV is needed locally.
+      MOCK_VIRUS_SCAN_ENABLED: true
+    healthcheck:
+      test: ['CMD', 'curl', 'localhost:7337/health']
+      interval: 5s
+      start_period: 5s
+      retries: 10
+    networks:
+      - performance-tests
+
+  postgres:
+    # PostGIS is required: the backend stores boundary geometry via ST_GeomFromGeoJSON.
+    image: postgis/postgis:16-3.4
+    ports:
+      - '5445:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nrf_backend
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d nrf_backend']
+      interval: 3s
+      start_period: 5s
+      retries: 5
+    networks:
+      - performance-tests
+
+  # Applies the nrf-backend Liquibase schema to Postgres, then exits. Required for
+  # the submit-quote scenario (POST /quote/check-your-answers writes to the DB).
+  # Changelogs are mounted from the sibling nrf-backend checkout; override the path
+  # with BACKEND_CHANGELOG_PATH if it lives elsewhere.
+  liquibase:
+    image: liquibase/liquibase:4.27-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - '${BACKEND_CHANGELOG_PATH:-../nrf-backend/changelog}:/liquibase/changelog'
+    command: --url=jdbc:postgresql://postgres:5432/nrf_backend --username=postgres --password=password --changelog-file=changelog/db.changelog.xml update
     networks:
       - performance-tests
 
