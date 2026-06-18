@@ -2,7 +2,7 @@
 
 A JMeter based performance test runner for the Nature Restoration Fund (NRF)
 service on the CDP Platform. It ships scenarios for the `nrf-frontend` quote
-journey — a smoke test, the boundary **upload** flow, and the **submit quote**
+journey — a performance test, the boundary **upload** flow, and the **submit quote**
 step — runnable locally via Docker Compose or on the CDP perf environment.
 
 - [Licence](#licence)
@@ -61,27 +61,32 @@ Once all services are healthy, the performance tests start automatically.
 
 ### Choosing a scenario
 
-The suite ships three JMeter scenarios, selected with the `TEST_SCENARIO`
-environment variable on the `development` container:
+The suite ships a single JMeter scenario, selected with the `TEST_SCENARIO`
+environment variable on the `development` container (it is also the default):
 
 | `TEST_SCENARIO` | File | What it tests |
 |-----------------|------|---------------|
-| `start` (default) | `scenarios/start.jmx` | Smoke test — `GET /` (start page) |
-| `upload` | `scenarios/upload.jmx` | Boundary upload flow (frontend → backend → cdp-uploader) |
-| `submit-quote` | `scenarios/submit-quote.jmx` | Submit a quote — `POST /quote/check-your-answers` |
+| `test` (default) | `scenarios/test.jmx` | Mixed capacity proof — three journeys (homepage, submit-quote, upload) run **in parallel** to exercise the service under concurrent mixed load (NFR-SCCA-007) |
 
 ```bash
-docker compose run --rm -e TEST_SCENARIO=submit-quote development
+docker compose run --rm -e TEST_SCENARIO=test development
 ```
 
 ### Tuning the load profile
 
-The load shape is controlled by environment variables (defaults shown), injected
-into the test plans as JMeter properties:
+The `test` scenario runs the three journeys **concurrently**. `THREAD_COUNT` is
+the concurrent users *per journey* — it is shared by all three thread groups —
+and `RAMPUP_SECONDS`, `LOOP_COUNT`, `DURATION_SECONDS` shape the run. All are
+injected into the test plan as JMeter properties (defaults shown):
 
 ```bash
-THREAD_COUNT=10 RAMPUP_SECONDS=30 LOOP_COUNT=100 DURATION_SECONDS=300
+THREAD_COUNT=100 RAMPUP_SECONDS=300 LOOP_COUNT=-1 DURATION_SECONDS=3600
 ```
+
+With the default `THREAD_COUNT=100` this drives 300 concurrent sessions (100 per
+journey), proving each journey holds 100 concurrent users while the others are
+also under load. The single report breaks the KPIs down per journey:
+`GET homepage`, `Submit quote`, `Upload boundary flow`.
 
 In the CDP perf environment these are set from the Portal.
 
