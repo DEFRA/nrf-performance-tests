@@ -20,7 +20,7 @@ mkdir -p ${JM_REPORTS} ${JM_LOGS}
 # directory itself ("Resource busy"), so we clear its contents instead.
 rm -rf "${JM_REPORTS:?}"/* "${JM_REPORTS}"/.[!.]* 2>/dev/null || true
 
-TEST_SCENARIO=${TEST_SCENARIO:-start}
+TEST_SCENARIO=${TEST_SCENARIO:-test}
 SCENARIOFILE=${JM_SCENARIOS}/${TEST_SCENARIO}.jmx
 REPORTFILE=${NOW}-perftest-${TEST_SCENARIO}-report.jtl
 LOGFILE=${JM_LOGS}/perftest-${TEST_SCENARIO}.log
@@ -34,7 +34,11 @@ SERVICE_URL_SCHEME=${SERVICE_URL_SCHEME:-https}
 # Load profile. These can be overridden via environment variables (e.g. from the
 # CDP Portal) and are injected into the test plan as JMeter properties so the
 # load shape can be tuned without editing the .jmx scenario.
-THREAD_COUNT=${THREAD_COUNT:-1}
+# THREAD_COUNT is the concurrent users per journey. The test.jmx scenario runs
+# three journeys (homepage, submit-quote, upload) in parallel, each as its own
+# thread group sharing THREAD_COUNT, so the service sees 3 x THREAD_COUNT
+# concurrent sessions. Defaults to 100 to match the NFR-SCCA-007 capacity target.
+THREAD_COUNT=${THREAD_COUNT:-100}
 RAMPUP_SECONDS=${RAMPUP_SECONDS:-30}
 LOOP_COUNT=${LOOP_COUNT:-100}
 DURATION_SECONDS=${DURATION_SECONDS:-300}
