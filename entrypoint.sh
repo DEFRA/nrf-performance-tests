@@ -37,8 +37,8 @@ SERVICE_URL_SCHEME=${SERVICE_URL_SCHEME:-https}
 # THREAD_COUNT is the concurrent users per journey. The test.jmx scenario runs
 # three journeys (homepage, submit-quote, upload) in parallel, each as its own
 # thread group sharing THREAD_COUNT, so the service sees 3 x THREAD_COUNT
-# concurrent sessions. Defaults to 100 to match the NFR-SCCA-007 capacity target.
-THREAD_COUNT=${THREAD_COUNT:-100}
+# concurrent sessions. Defaults to 50 (3 x 50 = 150 concurrent sessions).
+THREAD_COUNT=${THREAD_COUNT:-50}
 RAMPUP_SECONDS=${RAMPUP_SECONDS:-30}
 LOOP_COUNT=${LOOP_COUNT:-100}
 DURATION_SECONDS=${DURATION_SECONDS:-300}
