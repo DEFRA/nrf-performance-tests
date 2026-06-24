@@ -2,135 +2,45 @@
 
 A JMeter based performance test runner for the Nature Restoration Fund (NRF)
 service on the CDP Platform. It ships scenarios for the `nrf-frontend` quote
-journey — a performance test, the boundary **upload** flow, and the **submit quote**
-step — runnable locally via Docker Compose or on the CDP perf environment.
+journey — the boundary **upload** flow and the **submit quote** step — running
+all three journeys (homepage, submit-quote, upload) in parallel.
 
 - [Licence](#licence)
   - [About the licence](#about-the-licence)
 
 ## Build
 
-Test suites are built automatically by the [.github/workflows/publish.yml](.github/workflows/publish.yml) action whenever a change are committed to the `main` branch.
+Test suites are built automatically by the [.github/workflows/publish.yml](.github/workflows/publish.yml) action whenever a change is committed to the `main` branch.
 A successful build results in a Docker container that is capable of running your tests on the CDP Platform and publishing the results to the CDP Portal.
 
 ## Run
 
 The performance test suites are designed to be run from the CDP Portal.
-The CDP Platform runs test suites in much the same way it runs any other service, it takes a docker image and runs it as an ECS task, automatically provisioning infrastructure as required.
+The CDP Platform runs test suites in much the same way it runs any other service — it takes a Docker image and runs it as an ECS task, automatically provisioning infrastructure as required.
 
-## Local Testing with Docker Compose
+## Local testing
 
-You can run the entire performance test stack locally using Docker Compose, including LocalStack, Redis, and the target service. This is useful for development, integration testing, or verifying your test scripts **before committing to `main`**, which will trigger GitHub Actions to build and publish the Docker image.
+Local runs use [nrf-solution](https://github.com/DEFRA/nrf-solution), which brings up the full stack (frontend, backend, databases, LocalStack) via Tilt and runs the perf test container against it.
 
-### Build the Docker image
+See [nrf-solution/docs/perf-testing.md](https://github.com/DEFRA/nrf-solution/blob/main/docs/perf-testing.md) for instructions.
 
-```bash
-docker compose build --no-cache development
-```
+## Scenarios
 
-This ensures any changes to `entrypoint.sh` or other scripts are picked up properly.
-
----
-
-### Start the full test stack
-
-```bash
-docker compose up --build
-```
-
-This brings up the full Nature Restoration Fund stack under test:
-
-* `development`: the container that runs the JMeter performance tests
-* `service`: the `nrf-frontend` application under test (port 3000)
-* `nrf-backend`: the backend API the frontend calls (port 3001)
-* `postgres`: PostGIS database for the backend
-* `liquibase`: applies the backend database schema, then exits
-* `cdp-uploader`: file-upload/scan service (mock virus scanner) for the upload flow
-* `redis`: backing cache for the frontend, backend and uploader
-* `localstack`: simulates AWS S3, SNS and SQS
-
-Once all services are healthy, the performance tests start automatically.
-
-> **Liquibase changelogs (local only):** the `liquibase` service applies the
-> backend schema from the sibling `nrf-backend` checkout
-> (`../nrf-backend/changelog`). If that repo lives elsewhere, set
-> `BACKEND_CHANGELOG_PATH` before running. This is only needed locally — CDP
-> environments run their own migrations.
-
----
-
-### Choosing a scenario
-
-The suite ships a single JMeter scenario, selected with the `TEST_SCENARIO`
-environment variable on the `development` container (it is also the default):
+The suite ships a single JMeter scenario:
 
 | `TEST_SCENARIO` | File | What it tests |
 |-----------------|------|---------------|
 | `test` (default) | `scenarios/test.jmx` | Mixed capacity proof — three journeys (homepage, submit-quote, upload) run **in parallel** to exercise the service under concurrent mixed load (NFR-SCCA-007) |
 
-```bash
-docker compose run --rm -e TEST_SCENARIO=test development
-```
+## Tuning the load profile
 
-### Tuning the load profile
-
-The `test` scenario runs the three journeys **concurrently**. `THREAD_COUNT` is
-the concurrent users *per journey* — it is shared by all three thread groups —
-and `RAMPUP_SECONDS`, `LOOP_COUNT`, `DURATION_SECONDS` shape the run. All are
-injected into the test plan as JMeter properties (defaults shown):
-
-```bash
-THREAD_COUNT=100 RAMPUP_SECONDS=300 LOOP_COUNT=-1 DURATION_SECONDS=3600
-```
-
-With the default `THREAD_COUNT=100` this drives 300 concurrent sessions (100 per
-journey), proving each journey holds 100 concurrent users while the others are
-also under load. The single report breaks the KPIs down per journey:
-`GET homepage`, `Submit quote`, `Upload boundary flow`.
-
-In the CDP perf environment these are set from the Portal.
-
----
-
-### Notes
-
-* LocalStack resources (the `s3://test-results` bucket, the upload buckets/queues and the `nrf-quote-estimate-request` SNS topic) are created automatically by [`compose/localstack/05-setup.sh`](compose/localstack/05-setup.sh).
-* Logs and reports are written to `./reports` on your host. `entrypoint.sh` clears this directory before each run, so reports do not accumulate between runs.
-* `entrypoint.sh` runs JMeter for the selected `TEST_SCENARIO` and publishes the results to S3.
-* `depends_on` healthchecks (and `service_completed_successfully` for `liquibase`) ensure the database, backend, uploader and frontend are ready before the tests start.
-* Boundary/upload test data lives in [`test-data/`](test-data) and is copied into the image by the `Dockerfile`.
-* If you change test scripts, scenarios or `entrypoint.sh`, rebuild the test container:
-
-```bash
-docker compose build development
-```
-
-## Local Testing with LocalStack
-
-### Build a new Docker image
-```
-docker build . -t my-performance-tests
-```
-### Create a Localstack bucket
-```
-aws --endpoint-url=localhost:4566 s3 mb s3://my-bucket
-```
-
-### Run performance tests
+`THREAD_COUNT` is the concurrent users *per journey* and `RAMPUP_SECONDS`, `LOOP_COUNT`, `DURATION_SECONDS` shape the run (defaults shown):
 
 ```
-docker run \
--e S3_ENDPOINT='http://host.docker.internal:4566' \
--e RESULTS_OUTPUT_S3_PATH='s3://my-bucket' \
--e AWS_ACCESS_KEY_ID='test' \
--e AWS_SECRET_ACCESS_KEY='test' \
--e AWS_SECRET_KEY='test' \
--e AWS_REGION='eu-west-2' \
-my-performance-tests
+THREAD_COUNT=35  RAMPUP_SECONDS=30  LOOP_COUNT=100  DURATION_SECONDS=300
 ```
 
-docker run -e S3_ENDPOINT='http://host.docker.internal:4566' -e RESULTS_OUTPUT_S3_PATH='s3://cdp-infra-dev-test-results/cdp-portal-perf-tests/95a01432-8f47-40d2-8233-76514da2236a' -e AWS_ACCESS_KEY_ID='test' -e AWS_SECRET_ACCESS_KEY='test' -e AWS_SECRET_KEY='test' -e AWS_REGION='eu-west-2' -e ENVIRONMENT='perf-test' my-performance-tests
-
+In the CDP perf environment these are set from the Portal. Locally they are set via the Tilt dashboard — see the perf-testing guide linked above.
 
 ## Licence
 
