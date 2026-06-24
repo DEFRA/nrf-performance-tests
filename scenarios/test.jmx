@@ -85,7 +85,7 @@
         </ConfigTestElement>
         <hashTree/>
         <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager">
-          <boolProp name="CookieManager.clearEachIteration">true</boolProp>
+          <boolProp name="CookieManager.clearEachIteration">false</boolProp>
           <collectionProp name="CookieManager.cookies"/>
         </CookieManager>
         <hashTree/>
@@ -373,7 +373,7 @@
         </ConfigTestElement>
         <hashTree/>
         <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager">
-          <boolProp name="CookieManager.clearEachIteration">true</boolProp>
+          <boolProp name="CookieManager.clearEachIteration">false</boolProp>
           <collectionProp name="CookieManager.cookies"/>
         </CookieManager>
         <hashTree/>
