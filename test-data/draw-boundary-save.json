@@ -1,33 +1,13 @@
 {
-  "boundaryGeojson": {
-    "intersectingEdps": [{ "label": "Kent Downs EDP" }],
-    "boundaryGeometryWgs84": {
-      "type": "FeatureCollection",
-      "features": [
-        {
-          "type": "Feature",
-          "geometry": {
-            "type": "Polygon",
-            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]
-          },
-          "properties": {}
-        }
+  "geometry": {
+    "coordinates": [
+      [
+        [1.1993562451110051, 52.843484969466544],
+        [1.2430654802216736, 52.83292354802592],
+        [1.2218352803113248, 52.82613270650231],
+        [1.1993562451110051, 52.843484969466544]
       ]
-    },
-    "boundaryGeometryOriginal": {
-      "type": "Polygon",
-      "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]
-    },
-    "boundaryMetadata": {
-      "area": { "hectares": 1.2, "acres": 3.5 },
-      "perimeter": { "kilometres": 14.15, "miles": 9.3 },
-      "centre": [1.29, 51.2],
-      "bounds": {
-        "topLeft": [1.29, 51.0],
-        "topRight": [1.43, 52.6],
-        "bottomRight": [1.29, 50.5],
-        "bottomLeft": [1.42, 52.6]
-      }
-    }
+    ],
+    "type": "Polygon"
   }
 }
