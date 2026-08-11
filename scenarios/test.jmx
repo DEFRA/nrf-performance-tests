@@ -27,7 +27,7 @@
           <stringProp name="HTTPSampler.domain">${__P(domain, nrf-frontend.${__P(env)}.cdp-int.defra.cloud)}</stringProp>
           <stringProp name="HTTPSampler.port">${__P(port, 443)}</stringProp>
           <stringProp name="HTTPSampler.protocol">${__P(protocol, https)}</stringProp>
-          <stringProp name="HTTPSampler.path">/</stringProp>
+          <stringProp name="HTTPSampler.path">/manage/start-page</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
@@ -217,7 +217,7 @@
             <hashTree/>
           </hashTree>
           <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST residential" enabled="true">
-            <stringProp name="HTTPSampler.path">/quote/units</stringProp>
+            <stringProp name="HTTPSampler.path">/quote/unit-number</stringProp>
             <stringProp name="HTTPSampler.method">POST</stringProp>
             <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
             <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
@@ -592,7 +592,7 @@
             <hashTree/>
           </hashTree>
           <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST residential" enabled="true">
-            <stringProp name="HTTPSampler.path">/quote/units</stringProp>
+            <stringProp name="HTTPSampler.path">/quote/unit-number</stringProp>
             <stringProp name="HTTPSampler.method">POST</stringProp>
             <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
             <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
@@ -748,8 +748,8 @@
             </ResponseAssertion>
             <hashTree/>
           </hashTree>
-          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET upload-received" enabled="true">
-            <stringProp name="HTTPSampler.path">/quote/upload-received</stringProp>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET checking-file" enabled="true">
+            <stringProp name="HTTPSampler.path">/quote/checking-file</stringProp>
             <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
             <stringProp name="HTTPSampler.method">GET</stringProp>
             <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
