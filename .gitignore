@@ -14,3 +14,5 @@ jmeter.log
 report.csv
 reports/
 logs/
+report/
+results.jtl

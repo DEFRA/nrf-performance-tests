@@ -12,6 +12,7 @@ fi
 JM_SCENARIOS=${JM_HOME}/scenarios
 JM_REPORTS=${JM_HOME}/reports
 JM_LOGS=${JM_HOME}/logs
+TEST_DATA_DIR=${TEST_DATA_DIR:-${JM_HOME}/test-data}
 
 mkdir -p ${JM_REPORTS} ${JM_LOGS}
 
@@ -53,7 +54,8 @@ jmeter -n -t ${SCENARIOFILE} -e -l "${REPORTFILE}" -o ${JM_REPORTS} -j ${LOGFILE
 -JTHREAD_COUNT="${THREAD_COUNT}" \
 -JRAMPUP_SECONDS="${RAMPUP_SECONDS}" \
 -JLOOP_COUNT="${LOOP_COUNT}" \
--JDURATION_SECONDS="${DURATION_SECONDS}"
+-JDURATION_SECONDS="${DURATION_SECONDS}" \
+-JTEST_DATA_DIR="${TEST_DATA_DIR}"
 
 # Publish the results into S3 so they can be displayed in the CDP Portal
 if [ -n "$RESULTS_OUTPUT_S3_PATH" ]; then
