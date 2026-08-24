@@ -1,6 +1,6 @@
 # nrf-performance-tests
 
-A JMeter based performance test runner for the Nature Restoration Fund (NRF)
+A JMeter based performance test runner for the Nature Restoration Levy (NRL)
 service on the CDP Platform. It ships scenarios for the `nrf-frontend` quote
 journey — the boundary **upload** flow and the **submit quote** step — running
 all three journeys (homepage, submit-quote, upload) in parallel.
